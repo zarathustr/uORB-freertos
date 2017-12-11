@@ -31,10 +31,7 @@
  *
  ****************************************************************************/
 
-/* Author: Jin Wu, Shuangqi Mo
-   E-mail: jin_wu_uestc@hotmail.com
-   Website: www.jinwu.science
-            www.amovauto.com
+/* This file was followed from the PX4 version uORB
 */
 
 #include "Publication.hpp"
