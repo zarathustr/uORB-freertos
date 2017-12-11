@@ -31,7 +31,10 @@
  *
  ****************************************************************************/
 
-/* Author: Jin Wu, Shuangqi Mo
+
+/* @Author 1: Jin Wu
+   @Author 2: Shuangqi Mo
+   
    E-mail: jin_wu_uestc@hotmail.com
    Website: www.jinwu.science
             www.amovauto.com
