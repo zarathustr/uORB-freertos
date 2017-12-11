@@ -2,11 +2,6 @@
  *
  *   Copyright (c) 2017 AMOV Development Team. All rights reserved.
  *
- *   Author: Jin Wu and Xiaoqi
- *
- *   Website: http://www.amovauto.com/, https://github.com/zarathustr
- *   e-mail: jin_wu_uestc@hotmail.com
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -37,39 +32,37 @@
  ****************************************************************************/
 
 
+/* Author: Jin Wu, Shuangqi Mo
+   E-mail: jin_wu_uestc@hotmail.com
+   Website: www.jinwu.science
+            www.amovauto.com
+*/
+
+
 #include "uORB.h"
 #include <drv_hrt.h>
 #include "topics/parameter_update.h"
-#include "uORBRam.h"
 #include "uORBHelper.h"
 #include <cstdlib>
 #include <cstring>
 #include <poll.h>
 
-#if defined(STM32F4)
+#ifdef USE_UORB_CCMRAM
 
-#define USE_UORB_RAM
-
-#endif
+#include "uORBRam.h"
 
 #pragma default_variable_attributes = @ ".ccmram"
-
-  ORBData               *orb_data[total_uorb_num];
-
-  pollfd_struct_t       poll_queue[UORB_MAX_POLL];
-  
-#pragma default_variable_attributes =
- 
-  
-
-  
-#ifdef          USE_UORB_RAM
-  
-#pragma location = ".ccmram"
-  
-uORBRam         ram_ccm;
-
+uORBRam _ccmram;
 #endif
+
+ORBData               *orb_data[total_uorb_num];
+
+pollfd_struct_t       poll_queue[UORB_MAX_POLL];
+
+#ifdef USE_UORB_CCMRAM
+#pragma default_variable_attributes =
+#endif
+
   
 
 
@@ -129,68 +122,14 @@ void orb_sem_unlock(ORBData *_orb)
     }
 }
 
-
-
-
 orb_advert_t orb_advertise(const struct orb_metadata *meta, const void *data)
 {   
-    orb_advert_t advert = nullptr;
-    
-    //get the serial number of the current orb
-    int serial = get_orb_serial(meta->o_name);
-    
-    //we get an effective orb
-    if(serial != -1)
-    {
-        //obtain the instance according to whether the orb is a multi-prio orb
-        int instance;
-        if(is_orb_multi(serial))
-            instance = ORB_MULTI_MAX_INSTANCES - 1;
-        else
-            instance = 0;
-        
-        orb_sem_lock(&orb_data[serial][instance]);
-        
-        //reset the published flag to false to prevent subscribing and checking
-        orb_data[serial][instance].published = false;
-        
-        int atomic_state = orb_lock();
-        
-        //copy the data
-        std::memcpy(orb_data[serial][instance].data, data, meta->o_size);
-        
-        orb_unlock(atomic_state);
-        
-        //copy the current serial number into the ORBData struct
-        orb_data[serial][instance].serial = serial;
-        
-        //name the advert as the pointer of the orb's internal data
-        advert = (void*)(&orb_data[serial][instance]);
-        
-        //get the current system time in us
-        orb_data[serial][instance].last_updated_time = hrt_absolute_time();
-        
-        //update the published flag to true
-        orb_data[serial][instance].published = true;
-        
-        int task_id = (int)osThreadGetId();
-        for(int i = 0; i < UORB_MAX_SUB; ++i)
-        {
-            orb_data[serial][instance].authority_list[i] = -1;
-        }
-        
-        orb_sem_unlock(&orb_data[serial][instance]);
-    }
-    
-    return advert;
+    return orb_advertise_multi(meta, data, nullptr, ORB_PRIO_MAX);
 }
-
-
-
 
 orb_advert_t orb_advertise_queue(const struct orb_metadata *meta, const void *data, unsigned int queue_size)
 {
-	return orb_advertise_multi_queue(meta, data, nullptr, ORB_PRIO_MIN, queue_size);
+	return orb_advertise_multi_queue(meta, data, nullptr, ORB_PRIO_MAX, queue_size);
 }
 
 
@@ -225,6 +164,15 @@ orb_advert_t orb_advertise_multi(const struct orb_metadata *meta, const void *da
             orb_data[serial][inst].published = false;
             
             int atomic_state = orb_lock();
+            
+            if(orb_data[serial][inst].data == nullptr)
+            {
+#ifndef USE_UORB_CCMRAM
+                orb_data[serial][inst].data = new uint8_t[meta->o_size];
+#else
+                orb_data[serial][inst].data = (uint8_t*)_ccmram.uORBDataCalloc(meta->o_size, 1);
+#endif
+            }
             
             //copy the data
             std::memcpy(orb_data[serial][inst].data, data, meta->o_size);
@@ -296,6 +244,15 @@ orb_advert_t orb_advertise_multi(const struct orb_metadata *meta, const void *da
                 orb_data[serial][inst].queue->get(buff, meta->o_size);
         
                 int atomic_state = orb_lock();
+                
+                if(orb_data[serial][inst].data == nullptr)
+                {
+#ifndef USE_UORB_CCMRAM
+                    orb_data[serial][inst].data = new uint8_t[meta->o_size];
+#else
+                    orb_data[serial][inst].data = (uint8_t*)_ccmram.uORBDataCalloc(meta->o_size, 1);
+#endif
+                }
                 
                 std::memcpy(orb_data[serial][inst].data, buff, meta->o_size);
                 
@@ -898,8 +855,6 @@ void orb_poll_notify(int fd, pollevent_t events)
 void orb_init(void)
 {
     orb_in_os = false;
-
-    orb_helper_init();
     
     for(int i = 0; i < UORB_MAX_POLL; ++i)
     {
@@ -917,15 +872,15 @@ void orb_init(void)
     {
         if(is_orb_multi(i))
         {
-#ifdef USE_UORB_RAM
-            orb_data[i] = (ORBData*)ram_ccm.uORBDataCalloc(ORB_MULTI_MAX_INSTANCES, sizeof(ORBData));
+#ifndef USE_UORB_CCMRAM
+            orb_data[i] = new ORBData[ORB_MULTI_MAX_INSTANCES];
 #else
-            orb_data[i] = new ORBData[ORB_MULTI_MAX_INSTANCES];            
-#endif
+            orb_data[i] = (ORBData*)_ccmram.uORBDataCalloc(sizeof(ORBData) * ORB_MULTI_MAX_INSTANCES, 1);
+#endif            
 
             for(int j = 0; j < ORB_MULTI_MAX_INSTANCES; ++j)
             {
-                orb_data[i][j].data = get_orb_public_according_to_serial_and_instance(i, j);
+                orb_data[i][j].data = nullptr; 
                 orb_data[i][j].priority = (ORB_PRIO)get_priority(j);
                 orb_data[i][j].serial = -1;
                 orb_data[i][j].interval = 0;
@@ -950,12 +905,13 @@ void orb_init(void)
         }
         else
         {
-#ifdef USE_UORB_RAM
-            orb_data[i] = (ORBData*)ram_ccm.uORBDataCalloc(1, sizeof(ORBData));
-#else
+#ifndef USE_UORB_CCMRAM
             orb_data[i] = new ORBData;
+#else
+            orb_data[i] = (ORBData*)_ccmram.uORBDataCalloc(sizeof(ORBData), 1);
 #endif
-            orb_data[i]->data = get_orb_public_according_to_serial_and_instance(i, 0);
+
+            orb_data[i]->data = nullptr;
             orb_data[i]->priority = ORB_PRIO_DEFAULT;
             orb_data[i]->serial = -1;
             orb_data[i]->interval = 0;

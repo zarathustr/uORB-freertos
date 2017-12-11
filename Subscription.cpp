@@ -31,6 +31,11 @@
  *
  ****************************************************************************/
 
+/* Author: Jin Wu, Shuangqi Mo
+   E-mail: jin_wu_uestc@hotmail.com
+   Website: www.jinwu.science
+            www.amovauto.com
+*/
 
 #include "Subscription.hpp"
 #include "topics/actuator_armed.h"

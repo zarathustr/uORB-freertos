@@ -2,11 +2,6 @@
  *
  *   Copyright (c) 2017 AMOV Development Team. All rights reserved.
  *
- *   Author: Jin Wu and Xiaoqi
- *
- *   Website: http://www.amovauto.com/, https://github.com/zarathustr
- *   e-mail: jin_wu_uestc@hotmail.com
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -38,13 +33,14 @@
 
 
 #include "uORBRam.h"
+
 #include <cstring>
 #include <cstdlib>
 #include <log_printf.h>
 
 uORBRam::uORBRam()
 {
-    dataSramUsed=0;
+    dataSramUsed = 0;
 }
 
 uORBRam::~uORBRam()
@@ -110,7 +106,7 @@ void *uORBRam::uORBDataCalloc(uint16_t count, uint16_t size) {
     uint32_t words;
 
     // round up to word size
-    words = (count*size + sizeof(int)-1) / sizeof(int);
+    words = (count * size + sizeof(int) - 1) / sizeof(int);
 
     if ((dataSramUsed + words) > CCM_HEAP_SIZE) {
         printf("Out of data SRAM!\n");
@@ -127,13 +123,13 @@ size_t *uORBRam::uORBStackInit(uint16_t size, char *name) {
     size_t *sp;
 
     // use memory in the CCM
-    sp = (size_t *)uORBDataCalloc(1, size*4);
+    sp = (size_t *)uORBDataCalloc(1, size * 4);
 
     // fill memory with pattern to ease overflow detection
-    std::memset(sp, 0x00, size*4);
+    std::memset(sp, 0x00, size * 4);
 
     stackPointers[numStacks] = sp;
-    stackSizes[numStacks] = size*4;
+    stackSizes[numStacks] = size * 4;
     stackFrees[numStacks] = stackSizes[numStacks];
     stackNames[numStacks] = name;
     numStacks++;

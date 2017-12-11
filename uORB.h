@@ -2,11 +2,6 @@
  *
  *   Copyright (c) 2017 AMOV Development Team. All rights reserved.
  *
- *   Author: Jin Wu and Xiaoqi
- *
- *   Website: http://www.amovauto.com/, https://github.com/zarathustr
- *   e-mail: jin_wu_uestc@hotmail.com
- *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
