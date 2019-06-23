@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017 AMOV Development Team. All rights reserved.
+ *   Copyright (c) 2016 Jin Wu. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,10 @@
  *
  ****************************************************************************/
 
-/* Author: Jin Wu, Shuangqi Mo
+/* Author: Jin Wu
+
    E-mail: jin_wu_uestc@hotmail.com
    Website: www.jinwu.science
-            www.amovauto.com
 */
 
 #include <uORB/uORB.h>
